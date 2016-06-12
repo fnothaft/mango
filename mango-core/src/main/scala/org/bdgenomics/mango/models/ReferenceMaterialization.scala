@@ -94,7 +94,7 @@ class ReferenceMaterialization(sc: SparkContext,
     // convert to interval RDD
     val refRDD: IntervalRDD[ReferenceRegion, ReferenceTile] =
       IntervalRDD(splitFragments)
-        .mapValues(r => ReferenceTile(r))
+        .mapValues(r => ReferenceTile(r)) // Front end parses byte array
 
     // insert whole chromosome in structure
     if (intRDD == null)
@@ -109,6 +109,13 @@ class ReferenceMaterialization(sc: SparkContext,
       put(region)
     }
     getTiles(region, true)
+  }
+
+  def getReferenceAsBytes(region: ReferenceRegion): Array[Byte] = {
+    if (!bookkeep.contains(region.referenceName)) {
+      put(region)
+    }
+    getTiles(region, true).toCharArray.map(_.toByte)
   }
 
   def init: SequenceDictionary = {

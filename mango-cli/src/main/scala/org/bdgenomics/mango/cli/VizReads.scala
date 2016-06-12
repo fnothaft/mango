@@ -174,6 +174,10 @@ class VizServlet extends ScalatraServlet {
         "featuresExist" -> VizReads.featuresExist))
   }
 
+  get("/sequenceDictionary") {
+    Ok(write(VizReads.refRDD.dict.records))
+  }
+
   get("/reads/:ref") {
     VizTimers.ReadsRequest.time {
       val viewRegion = ReferenceRegion(params("ref"), params("start").toLong, params("end").toLong)
@@ -296,13 +300,14 @@ class VizServlet extends ScalatraServlet {
     }
   }
 
+  // Sends byte array to front end
   get("/reference/:ref") {
     val viewRegion = ReferenceRegion(params("ref"), params("start").toLong,
       VizUtils.getEnd(params("end").toLong, VizReads.globalDict(params("ref"))))
     if (viewRegion.end - viewRegion.start > 2000)
       VizReads.errors.largeRegion
     else {
-      Ok(write(VizReads.refRDD.getReferenceString(viewRegion)))
+      Ok(write(VizReads.refRDD.getReferenceAsBytes(viewRegion)))
     }
   }
 
