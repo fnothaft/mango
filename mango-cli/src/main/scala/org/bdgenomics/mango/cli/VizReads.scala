@@ -23,7 +23,7 @@ import net.liftweb.json.Serialization.write
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.bdgenomics.adam.models.{ ReferenceRegion, SequenceDictionary }
-import org.bdgenomics.formats.avro.{ Genotype }
+import org.bdgenomics.formats.avro.{ AlignmentRecord, Genotype }
 import org.bdgenomics.mango.core.util.VizUtils
 import org.bdgenomics.mango.layout.{ VariantLayout, VariantFreqLayout }
 import org.bdgenomics.mango.tiling.{ L0, Layer }
@@ -209,6 +209,22 @@ class VizServlet extends ScalatraServlet {
     }
   }
 
+  get("/GA4GHreads/:ref") {
+    VizTimers.ReadsRequest.time {
+      val viewRegion = ReferenceRegion(params("ref"), params("start").toLong, params("end").toLong)
+      contentType = "json"
+
+      // if region is in bounds of reference, return data
+      val dictOpt = VizReads.globalDict(viewRegion.referenceName)
+      if (dictOpt.isDefined && viewRegion.end <= dictOpt.get.length) {
+        val sampleIds: List[String] = params("sample").split(",").toList
+        val alignments: RDD[AlignmentRecord] = VizReads.readsData.getRaw(viewRegion, sampleIds)
+        val array: Array[AlignmentRecord] = alignments.collect
+        Ok(write(array))
+      } else VizReads.errors.outOfBounds
+    }
+  }
+
   get("/overall") {
     contentType = "text/html"
     val templateEngine = new TemplateEngine
@@ -307,7 +323,7 @@ class VizServlet extends ScalatraServlet {
     if (viewRegion.end - viewRegion.start > 2000)
       VizReads.errors.largeRegion
     else {
-      Ok(write(VizReads.refRDD.getReferenceAsBytes(viewRegion)))
+      Ok(write(VizReads.refRDD.getReferenceString(viewRegion)))
     }
   }
 
